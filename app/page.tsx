@@ -10,7 +10,9 @@ import CameraFeed from "@/components/CameraFeed";
 import FrameCapture from "@/components/FrameCapture";
 import { useMultiCameraTracking } from "@/hooks/useMultiCameraTracking";
 import { useCameraStatus } from "@/hooks/useCameraStatus";
+import { useVirtualPtz } from "@/hooks/useVirtualPtz";
 import type { Camera } from "@/lib/ptz";
+import { isVirtual } from "@/lib/ptz";
 import type { ControlMapping } from "@/lib/mapping";
 import {
   axisToPanTiltCmd, axisToZoomCmd, axisToFocusCmd,
@@ -109,6 +111,7 @@ export default function Home() {
   useElectronLightBar(activeCam?.color);
 
   const multiTracking = useMultiCameraTracking();
+  const virtualPtz = useVirtualPtz();
 
   // Helper: get config for a camera (with defaults)
   function getCamTracking(camId: string) {
@@ -149,11 +152,21 @@ export default function Home() {
 
   const sendCmd = useCallback(
     async (cmd: string | { cmd: string; endpoint: string }, channel = "default") => {
-      if (!activeCam?.ip) return;
+      if (!activeCam) return;
+      const cmdStr = typeof cmd === "string" ? cmd : cmd.cmd;
+      const endpoint: "aw_ptz" | "aw_cam" = typeof cmd === "string" ? "aw_ptz" : (cmd.endpoint as "aw_ptz" | "aw_cam");
+
+      // Virtual camera — route to the in-app 3D controller, skip HTTP entirely.
+      if (isVirtual(activeCam)) {
+        virtualPtz.execCommand(activeCam.id, cmdStr, endpoint);
+        setLastCmd(cmdStr);
+        setLastResponse("ok (virtual)");
+        return;
+      }
+
+      if (!activeCam.ip) return;
       if (inFlight.current[channel]) return;
       inFlight.current[channel] = true;
-      const cmdStr = typeof cmd === "string" ? cmd : cmd.cmd;
-      const endpoint = typeof cmd === "string" ? "aw_ptz" : cmd.endpoint;
       setLastCmd(cmdStr);
       try {
         const res = await fetch("/api/camera", {
@@ -169,7 +182,7 @@ export default function Home() {
         inFlight.current[channel] = false;
       }
     },
-    [activeCam]
+    [activeCam, virtualPtz]
   );
 
   const sendContinuous = useCallback(
@@ -739,6 +752,7 @@ export default function Home() {
             padState={padState}
             mapping={mapping}
             profileName={activeProfileName}
+            virtualController={activeCam && isVirtual(activeCam) ? virtualPtz.getController(activeCam.id) : null}
             trackingEnabled={activeCamTracking.enabled}
             workerReady={activeCam ? (multiTracking.getState(activeCam.id).workerReady) : false}
             detections={activeCam ? (multiTracking.getState(activeCam.id).detections) : []}
@@ -840,6 +854,8 @@ export default function Home() {
         const cfg = getCamTracking(cam.id);
         const state = multiTracking.getState(cam.id);
         if (!cfg.enabled || cam.id === activeCam?.id) return null;
+        // Virtual cameras only render when active — no background frame capture.
+        if (isVirtual(cam)) return null;
         const rawUrl = cam.streamUrl || (cam.ip ? `/api/stream?url=${encodeURIComponent(require("@/lib/ptz").defaultStreamUrl(cam))}` : "");
         if (!rawUrl) return null;
         return (

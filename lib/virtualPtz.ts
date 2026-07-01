@@ -140,7 +140,9 @@ export class VirtualPtzController {
   apply(camera: PerspectiveCamera): void {
     // rotation.order defaults to "XYZ" — set yaw on Y, pitch on X. No roll.
     camera.rotation.order = "YXZ";
-    camera.rotation.y = this.state.yaw;
+    // State yaw is "positive = pan right", but a positive Three.js rotation.y
+    // turns the camera's forward vector toward -X (screen-left), so negate.
+    camera.rotation.y = -this.state.yaw;
     camera.rotation.x = this.state.pitch;
     if (camera.fov !== this.state.fov) {
       camera.fov = this.state.fov;

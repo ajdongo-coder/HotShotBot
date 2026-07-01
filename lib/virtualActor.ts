@@ -203,8 +203,10 @@ export function createActor(): Actor {
 
     rig.leftHip.rotation.x  =  hipSwing;
     rig.rightHip.rotation.x = -hipSwing;
-    rig.leftKnee.rotation.x  = -kneeBendL;
-    rig.rightKnee.rotation.x = -kneeBendR;
+    // Knees flex the lower leg backward (foot kicks up behind) — positive
+    // rotation.x, since the lower leg points down and toes point +Z.
+    rig.leftKnee.rotation.x  = kneeBendL;
+    rig.rightKnee.rotation.x = kneeBendR;
 
     // Arms swing counter to legs; small elbow bend.
     rig.leftShoulder.rotation.x  = -hipSwing * 0.9;

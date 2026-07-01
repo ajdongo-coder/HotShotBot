@@ -2,7 +2,8 @@ import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage } 
 import path from "path";
 import { spawn, ChildProcess } from "child_process";
 
-const isDev = process.env.NODE_ENV === "development";
+// app.isPackaged is false in dev (electron run directly), true in production .app bundle
+const isDev = !app.isPackaged;
 const NEXT_PORT = 3000;
 
 let nextServer: ChildProcess | null = null;

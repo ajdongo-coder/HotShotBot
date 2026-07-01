@@ -57,7 +57,8 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
-      backgroundThrottling: false, // keep JS running when window is hidden/unfocused
+      backgroundThrottling: false,
+      webSecurity: false, // allows canvas to read cross-origin MJPEG frames for tracking
     },
   });
 

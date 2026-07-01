@@ -5,9 +5,14 @@ let model = null;
 let lockedBox = null;
 let inferring = false;
 
-// Defaults — overridden per-frame by the deadZone param
-const DEFAULT_DEAD_ZONE = 0.03;
-const DEFAULT_ZOOM_DEAD_ZONE = 0.05;
+// Smoothed position — exponential moving average to reduce jitter
+let smoothX = 0.5;
+let smoothY = 0.5;
+let smoothH = 0;
+const SMOOTH = 0.35; // 0=no smoothing, 1=instant. Lower = smoother but more lag
+
+const DEFAULT_DEAD_ZONE = 0.04;
+const DEFAULT_ZOOM_DEAD_ZONE = 0.06;
 // targetH = desired bounding box height as fraction of frame height.
 // full: whole person visible, box fills ~80% of frame height
 // mid:  waist-up only — zoom in until box is ~1.8× frame height (top 50% of body fills frame)
@@ -30,20 +35,26 @@ const TILT_TARGETS = {
 const HEAD_OFFSET = 0.04; // fraction of box height from top where head sits
 
 async function loadModel() {
-  // Import TF.js and COCO-SSD via CDN — workers can't use webpack bundled modules
+  // Derive the base URL from the worker's own location (e.g. http://localhost:3000)
+  const base = self.location.origin;
+
   importScripts(
-    "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js",
-    "https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgpu@4.22.0/dist/tf-backend-webgpu.min.js",
-    "https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"
+    `${base}/tfjs/tf.min.js`,
+    `${base}/tfjs/tf-backend-webgl.min.js`,
+    `${base}/tfjs/coco-ssd.min.js`
   );
-  // WebGPU maps to Metal on Apple Silicon — significantly faster than WebGL on M-series chips
-  // Falls back to CPU if WebGPU isn't available
-  const backend = (await tf.setBackend("webgpu").then(() => true).catch(() => false))
-    ? "webgpu"
-    : await tf.setBackend("cpu").then(() => "cpu");
-  console.log(`[tracking worker] TF.js backend: ${backend}`);
+
+  const backend = await tf.setBackend("webgpu").then(() => "webgpu").catch(async () => {
+    await tf.setBackend("webgl");
+    return "webgl";
+  });
   await tf.ready();
-  model = await cocoSsd.load({ base: "mobilenet_v2" });
+  console.log(`[HotShotBot worker] backend: ${backend}`);
+
+  model = await cocoSsd.load({
+    base: "mobilenet_v2",
+    modelUrl: `${base}/tfjs/models/coco-ssd/model.json`,
+  });
   postMessage({ type: "ready" });
 }
 
@@ -51,8 +62,8 @@ function trackAxis(offset, speed, deadZone) {
   const abs = Math.abs(offset);
   if (abs < deadZone) return 0;
   const dir = offset > 0 ? 1 : -1;
-  // Proportional in the near zone, full speed beyond 3x dead zone
-  const fastZone = deadZone * 3;
+  // Proportional zone is wider (6x dead zone) so camera ramps up gently
+  const fastZone = deadZone * 6;
   if (abs > fastZone) return dir * speed;
   return dir * ((abs - deadZone) / (fastZone - deadZone)) * speed;
 }
@@ -64,17 +75,11 @@ async function processFrame(imageData, width, height, speed, shotPreset, deadZon
   inferring = true;
 
   try {
-    // Convert ImageData → ImageBitmap for model.detect()
-    const bitmap = await createImageBitmap(new Blob([imageData.data.buffer], { type: "image/raw" })
-      .constructor === Blob
-      ? imageData
-      : imageData
-    );
-
-    // Actually createImageBitmap accepts ImageData directly in workers
+    console.log(`[HotShotBot worker] frame ${width}x${height}`);
     const bmp = await createImageBitmap(imageData);
     const preds = await model.detect(bmp);
     bmp.close();
+    console.log(`[HotShotBot worker] detections:`, preds.map(p => `${p.class} ${Math.round(p.score*100)}%`).join(', ') || 'none');
 
     const people = preds.filter(p => p.class === "person");
     const dets = people.map((p, i) => ({
@@ -107,21 +112,27 @@ async function processFrame(imageData, width, height, speed, shotPreset, deadZon
 
     lockedBox = best;
 
-    // Pan: keep body horizontally centered
-    const cx = best.x + best.w / 2;
-    const pan = trackAxis(cx - 0.5, speed, deadZone);
+    // Smooth detected position with EMA to absorb frame-to-frame jitter
+    const rawCx = best.x + best.w / 2;
+    const rawHeadY = best.y + best.h * HEAD_OFFSET;
+    smoothX = smoothX + (rawCx - smoothX) * SMOOTH;
+    smoothY = smoothY + (rawHeadY - smoothY) * SMOOTH;
+    smoothH = smoothH + (best.h - smoothH) * SMOOTH;
 
-    // Tilt: always anchor on the head, target Y depends on preset
+    // Pan on smoothed center X
+    const pan = trackAxis(smoothX - 0.5, speed, deadZone);
+
+    // Tilt on smoothed head Y
     const tiltTarget = TILT_TARGETS[shotPreset] ?? TILT_TARGETS.none;
-    const headY = best.y + best.h * HEAD_OFFSET;
-    const tilt = trackAxis(headY - tiltTarget.targetY, speed, deadZone);
+    const tilt = trackAxis(smoothY - tiltTarget.targetY, speed, deadZone);
 
+    // Zoom on smoothed box height
     let zoom = 0;
     const targetH = SHOT_PRESETS[shotPreset] ?? null;
     if (targetH !== null) {
-      const err = best.h - targetH;
+      const err = smoothH - targetH;
       if (Math.abs(err) > zoomDeadZone) {
-        zoom = Math.max(-1, Math.min(1, -err * speed * 2));
+        zoom = Math.max(-1, Math.min(1, -err * speed * 1.5));
       }
     }
 
@@ -142,6 +153,10 @@ self.onmessage = async (e) => {
     await processFrame(imageData, width, height, speed, shotPreset, deadZone);
   } else if (type === "lock") {
     lockedBox = e.data.box;
+    // Seed smoothed position from the locked box so there's no initial lurch
+    smoothX = lockedBox.x + lockedBox.w / 2;
+    smoothY = lockedBox.y + lockedBox.h * HEAD_OFFSET;
+    smoothH = lockedBox.h;
   } else if (type === "unlock") {
     lockedBox = null;
   }

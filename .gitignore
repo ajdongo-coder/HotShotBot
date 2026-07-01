@@ -23,6 +23,9 @@
 # electron compiled output
 /electron-dist/
 
+# bundled TF.js model files (large binaries, downloaded at build time)
+/public/tfjs/
+
 # electron distribution packages
 /dist/
 /release/

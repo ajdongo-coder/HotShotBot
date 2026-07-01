@@ -10,7 +10,8 @@
     "lint": "eslint",
     "electron:compile": "tsc --project electron/tsconfig.json",
     "electron:dev": "concurrently -k \"next dev\" \"wait-on http://localhost:3000 && npm run electron:compile && electron electron-dist/main.js\"",
-    "electron:build": "next build && npm run electron:compile && electron-builder --mac --arm64",
+    "download:models": "node scripts/download-models.js",
+    "electron:build": "npm run download:models && next build && npm run electron:compile && electron-builder --mac --arm64",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {

@@ -11,22 +11,28 @@ function startNextServer(): Promise<void> {
   return new Promise((resolve) => {
     if (isDev) { resolve(); return; }
 
-    const nextBin = path.join(app.getAppPath(), "node_modules", ".bin", "next");
-    const nextDir = app.getAppPath();
+    // In production the app bundle resources are at:
+    // <app>/Contents/Resources/app.asar  (or app/)
+    // next binary lives at app/node_modules/.bin/next
+    const appDir = app.getAppPath();
+    const nextBin = path.join(appDir, "node_modules", "next", "dist", "bin", "next");
 
-    nextServer = spawn(nextBin, ["start", "-p", String(NEXT_PORT)], {
-      cwd: nextDir,
+    nextServer = spawn(process.execPath, [nextBin, "start", "-p", String(NEXT_PORT)], {
+      cwd: appDir,
       env: { ...process.env, NODE_ENV: "production" },
     });
 
     nextServer.stdout?.on("data", (data: Buffer) => {
-      if (data.toString().includes("started server") || data.toString().includes("ready")) {
+      const str = data.toString();
+      if (str.includes("started server") || str.includes("ready") || str.includes("listening")) {
         resolve();
       }
     });
 
-    // Fallback — give it 5s to start
-    setTimeout(resolve, 5000);
+    nextServer.stderr?.on("data", () => {}); // suppress stderr noise
+
+    // Fallback — give it 8s to start
+    setTimeout(resolve, 8000);
   });
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "hotcamerasimulator26",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {
@@ -10,7 +10,7 @@
     "lint": "eslint",
     "electron:compile": "tsc --project electron/tsconfig.json",
     "electron:dev": "concurrently -k \"next dev\" \"wait-on http://localhost:3000 && npm run electron:compile && electron electron-dist/main.js\"",
-    "electron:build": "next build && npm run electron:compile && electron-builder --mac",
+    "electron:build": "next build && npm run electron:compile && electron-builder --mac --arm64",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -43,8 +43,12 @@
     "productName": "HOT Camera Simulator",
     "mac": {
       "category": "public.app-category.video",
-      "target": "dmg",
-      "icon": "public/icon.icns"
+      "target": [
+        { "target": "dmg", "arch": ["arm64"] },
+        { "target": "zip", "arch": ["arm64"] }
+      ],
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "files": [
       "electron-dist/**/*",
@@ -57,7 +61,10 @@
         "from": "node_modules/node-hid",
         "to": "node_modules/node-hid"
       }
-    ]
+    ],
+    "directories": {
+      "output": "release"
+    }
   },
   "allowScripts": {
     "node-hid@3.3.0": true

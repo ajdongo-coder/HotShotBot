@@ -1,8 +1,34 @@
 import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage } from "electron";
 import path from "path";
+import { spawn, ChildProcess } from "child_process";
 
 const isDev = process.env.NODE_ENV === "development";
 const NEXT_PORT = 3000;
+
+let nextServer: ChildProcess | null = null;
+
+function startNextServer(): Promise<void> {
+  return new Promise((resolve) => {
+    if (isDev) { resolve(); return; }
+
+    const nextBin = path.join(app.getAppPath(), "node_modules", ".bin", "next");
+    const nextDir = app.getAppPath();
+
+    nextServer = spawn(nextBin, ["start", "-p", String(NEXT_PORT)], {
+      cwd: nextDir,
+      env: { ...process.env, NODE_ENV: "production" },
+    });
+
+    nextServer.stdout?.on("data", (data: Buffer) => {
+      if (data.toString().includes("started server") || data.toString().includes("ready")) {
+        resolve();
+      }
+    });
+
+    // Fallback — give it 5s to start
+    setTimeout(resolve, 5000);
+  });
+}
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -79,7 +105,8 @@ function createTray() {
   ]));
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await startNextServer();
   createWindow();
   createTray();
 
@@ -93,6 +120,7 @@ app.whenReady().then(() => {
 
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
+  nextServer?.kill();
 });
 
 app.on("window-all-closed", () => {

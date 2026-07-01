@@ -92,7 +92,7 @@ function toggleHudMode() {
 function createTray() {
   const icon = nativeImage.createEmpty();
   tray = new Tray(icon);
-  tray.setToolTip("HOT Camera Simulator");
+  tray.setToolTip("HotShotBot");
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: "Show / Hide HUD  ⌘⇧H", click: toggleHudMode },
     { label: "Open Full Window", click: () => {

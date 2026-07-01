@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "HOT Camera Simulator",
-  description: "PS5 DualSense PTZ controller for Panasonic AW-UE70",
+  title: "HotShotBot",
+  description: "PS5 DualSense PTZ camera controller with AI tracking",
 };
 
 export default function RootLayout({

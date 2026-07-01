@@ -576,7 +576,7 @@ export default function Home() {
       <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          <h1 className="text-lg font-bold tracking-wide">HOT Camera Simulator</h1>
+          <h1 className="text-lg font-bold tracking-wide">HotShotBot</h1>
           {activeProfileName && (
             <span className="text-xs text-blue-400 bg-blue-600/15 border border-blue-500/30 px-2 py-0.5 rounded-full">
               {activeProfileName}

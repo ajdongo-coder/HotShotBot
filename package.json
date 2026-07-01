@@ -1,5 +1,5 @@
 {
-  "name": "hotcamerasimulator26",
+  "name": "hotshotbot",
   "version": "1.0.0",
   "private": true,
   "main": "electron-dist/main.js",
@@ -39,8 +39,8 @@
     "wait-on": "^9.0.10"
   },
   "build": {
-    "appId": "com.hot.camerasimulator",
-    "productName": "HOT Camera Simulator",
+    "appId": "com.hotshotbot",
+    "productName": "HotShotBot",
     "mac": {
       "category": "public.app-category.video",
       "target": [

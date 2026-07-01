@@ -1,32 +1,35 @@
 import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage } from "electron";
 import path from "path";
-import { spawn, ChildProcess } from "child_process";
+import { createServer, Server } from "http";
 
 const isDev = process.env.NODE_ENV === "development";
 const NEXT_PORT = 3000;
 
-let nextServer: ChildProcess | null = null;
+let nextServer: Server | null = null;
 
+// Run Next.js in-process (not as a spawned `next start` child).
+// A spawned child breaks in a packaged app: the `next` bin lives inside the
+// asar archive (can't be exec'd → ENOTDIR) and relies on a `node` on PATH,
+// which end users won't have. Electron's own Node runtime hosts the server
+// directly instead. In dev, `next dev` is already running externally.
 function startNextServer(): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (isDev) { resolve(); return; }
 
-    const nextBin = path.join(app.getAppPath(), "node_modules", ".bin", "next");
     const nextDir = app.getAppPath();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const next = require("next");
+    const nextApp = next({ dev: false, dir: nextDir });
+    const handle = nextApp.getRequestHandler();
 
-    nextServer = spawn(nextBin, ["start", "-p", String(NEXT_PORT)], {
-      cwd: nextDir,
-      env: { ...process.env, NODE_ENV: "production" },
-    });
-
-    nextServer.stdout?.on("data", (data: Buffer) => {
-      if (data.toString().includes("started server") || data.toString().includes("ready")) {
-        resolve();
-      }
-    });
-
-    // Fallback — give it 5s to start
-    setTimeout(resolve, 5000);
+    nextApp
+      .prepare()
+      .then(() => {
+        nextServer = createServer((req, res) => handle(req, res));
+        nextServer.on("error", reject);
+        nextServer.listen(NEXT_PORT, () => resolve());
+      })
+      .catch(reject);
   });
 }
 
@@ -120,7 +123,7 @@ app.whenReady().then(async () => {
 
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
-  nextServer?.kill();
+  nextServer?.close();
 });
 
 app.on("window-all-closed", () => {

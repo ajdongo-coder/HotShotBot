@@ -41,11 +41,22 @@
   "build": {
     "appId": "com.hotshotbot",
     "productName": "HotShotBot",
+    "asar": false,
     "mac": {
       "category": "public.app-category.video",
       "target": [
-        { "target": "dmg", "arch": ["arm64"] },
-        { "target": "zip", "arch": ["arm64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
       ],
       "hardenedRuntime": false,
       "gatekeeperAssess": false

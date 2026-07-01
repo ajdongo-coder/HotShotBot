@@ -395,6 +395,9 @@ export default function Home() {
       if (m.buttons.dpadUp === "finePanTilt" && state.dpadUp) tiltTarget = -DPAD_SPEED;
       if (m.buttons.dpadDown === "finePanTilt" && state.dpadDown) tiltTarget = DPAD_SPEED;
 
+      // Tilt invert — applied uniformly across single/dual/d-pad inputs
+      if (m.tiltInverted) tiltTarget = -tiltTarget;
+
       // Speed modifier button — slow down or speed up while held
       const modifierBtn = (Object.entries(m.buttons) as [keyof typeof m.buttons, string][])
         .find(([, v]) => v === "ptSpeedModifier")?.[0];

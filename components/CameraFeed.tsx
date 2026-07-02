@@ -37,8 +37,11 @@ interface Props {
 export default function CameraFeed({ camera, autoFocus, gain, status, statusError, showControls, padState, mapping, profileName, trackingEnabled, workerReady, detections, trackingState: trackingDisplayState, lockedBox, onSendFrame, onLockTarget, onClearLock, virtualController }: Props) {
   const virtual = isVirtual(camera);
   const rawUrl = camera.streamUrl || defaultStreamUrl(camera);
-  // When tracking is enabled we need canvas pixel access — proxy through Next.js to avoid CORS taint
-  const url = trackingEnabled && rawUrl
+  // In Electron (webSecurity:false) canvas reads cross-origin directly — no proxy needed.
+  // typeof check keeps SSR happy; the value is stable after first client render.
+  const isElectron = typeof window !== "undefined" && !!window.electronAPI;
+  // Never use the proxy in Electron — always stream directly from the camera IP.
+  const url = trackingEnabled && rawUrl && !isElectron
     ? `/api/stream?url=${encodeURIComponent(rawUrl)}`
     : rawUrl;
   // Only tracks the MJPEG <img> load lifecycle. For virtual cams we derive
@@ -54,8 +57,9 @@ export default function CameraFeed({ camera, autoFocus, gain, status, statusErro
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Virtual cams stay "live"; only reset when the URL changes, not on tracking toggle.
     if (!virtual) setStreamStatus("loading");
-  }, [url, trackingEnabled, virtual]);
+  }, [url, virtual]);
 
   useEffect(() => {
     function onFsChange() {
@@ -99,7 +103,7 @@ export default function CameraFeed({ camera, autoFocus, gain, status, statusErro
             ref={(el) => { imgRef.current = el; sourceRef.current = el; }}
             src={url}
             alt="Camera feed"
-            crossOrigin={trackingEnabled ? "anonymous" : undefined}
+            crossOrigin={trackingEnabled && !isElectron ? "anonymous" : undefined}
             className={`w-full h-full object-contain transition-opacity duration-300 ${streamStatus === "live" ? "opacity-100" : "opacity-0"}`}
             onLoad={() => setStreamStatus("live")}
             onError={() => setStreamStatus("error")}

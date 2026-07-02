@@ -84,6 +84,8 @@ export interface ControlMapping {
   momentumGlideMs: number;  // how long (ms) velocity takes to reach ~0 after release
   momentumAccel: number;    // 0–1, how quickly velocity tracks the stick (1 = instant)
   macros: [MacroConfig, MacroConfig, MacroConfig, MacroConfig];
+  // Camera preset slot index each face button recalls [cross, circle, square, triangle]
+  presetBindings: [number, number, number, number];
 }
 
 export const ACTION_LABELS: Record<ActionId, string> = {
@@ -186,6 +188,7 @@ export const DEFAULT_MAPPING: ControlMapping = {
     { label: "Macro 3", cmd: "", toggle: false, offCmd: "" },
     { label: "Macro 4", cmd: "", toggle: false, offCmd: "" },
   ],
+  presetBindings: [0, 1, 2, 3],
 };
 
 export function loadMapping(): ControlMapping {
@@ -226,6 +229,9 @@ export function loadMapping(): ControlMapping {
         ptMode: parsed.ptMode ?? DEFAULT_MAPPING.ptMode,
         zoomInverted: parsed.zoomInverted ?? DEFAULT_MAPPING.zoomInverted,
         momentumEnabled: parsed.momentumEnabled ?? DEFAULT_MAPPING.momentumEnabled,
+        presetBindings: Array.isArray(parsed.presetBindings) && parsed.presetBindings.length === 4
+          ? parsed.presetBindings as [number, number, number, number]
+          : DEFAULT_MAPPING.presetBindings,
       };
     }
   } catch {}

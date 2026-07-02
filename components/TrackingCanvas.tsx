@@ -20,7 +20,7 @@ interface Props {
 
 const CAPTURE_W = 640;
 const CAPTURE_H = 360;
-const FRAME_INTERVAL_MS = 100;
+const FRAME_INTERVAL_MS = 150; // ~6-7fps inference — less hectic than 10fps
 
 // Return the source's intrinsic pixel size. Images expose naturalWidth/Height,
 // canvases expose width/height directly.

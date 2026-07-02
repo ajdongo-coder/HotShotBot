@@ -2,7 +2,8 @@ import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage } 
 import path from "path";
 import { createServer, Server } from "http";
 
-const isDev = process.env.NODE_ENV === "development";
+// app.isPackaged is false in dev (electron run directly), true in production .app bundle
+const isDev = !app.isPackaged;
 const NEXT_PORT = 3000;
 
 let nextServer: Server | null = null;
@@ -53,7 +54,8 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
-      backgroundThrottling: false, // keep JS running when window is hidden/unfocused
+      backgroundThrottling: false,
+      webSecurity: false, // allows canvas to read cross-origin MJPEG frames for tracking
     },
   });
 

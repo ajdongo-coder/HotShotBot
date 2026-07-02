@@ -5,6 +5,7 @@ import { useElectronLightBar } from "@/hooks/useElectronLightBar";
 import CameraConfig from "@/components/CameraConfig";
 import RemapModal from "@/components/RemapModal";
 import ProfilesModal from "@/components/ProfilesModal";
+import PresetManager from "@/components/PresetManager";
 import ControllerVisualizer from "@/components/ControllerVisualizer";
 import CameraFeed from "@/components/CameraFeed";
 import FrameCapture from "@/components/FrameCapture";
@@ -62,6 +63,7 @@ export default function Home() {
   const [cameraTracking, setCameraTracking] = useState<Record<string, { enabled: boolean; shotPreset: import("@/hooks/useTracking").ShotPreset; speed: number; deadZone: number }>>({});
   const trackingEnabledRef = useRef(false);
   const [showProfiles, setShowProfiles] = useState(false);
+  const [showPresets, setShowPresets] = useState(false);
   const [isHud, setIsHud] = useState(false);
   const [isElectron, setIsElectron] = useState(false);
 
@@ -115,7 +117,7 @@ export default function Home() {
 
   // Helper: get config for a camera (with defaults)
   function getCamTracking(camId: string) {
-    return cameraTracking[camId] ?? { enabled: false, shotPreset: "none" as const, speed: 1.0, deadZone: 0.03 };
+    return cameraTracking[camId] ?? { enabled: false, shotPreset: "none" as const, speed: 0.5, deadZone: 0.04 };
   }
 
   const activeCamTracking = activeCam ? getCamTracking(activeCam.id) : { enabled: false, shotPreset: "none" as const, speed: 1.0, deadZone: 0.03 };
@@ -307,26 +309,26 @@ export default function Home() {
             sendCmd(FOCUS_FAR_CMD);
             setTimeout(() => sendCmd(FOCUS_FAR_STOP), 120);
             break;
-          case "recallPreset1":
-            isSaveHeld
-              ? (sendCmd(savePresetCmd(0)), setSavingPreset(true), setTimeout(() => setSavingPreset(false), 600))
-              : sendCmd(recallPresetCmd(0));
+          case "recallPreset1": {
+            const idx = m.presetBindings[0];
+            isSaveHeld ? (sendCmd(savePresetCmd(idx)), setSavingPreset(true), setTimeout(() => setSavingPreset(false), 600)) : sendCmd(recallPresetCmd(idx));
             break;
-          case "recallPreset2":
-            isSaveHeld
-              ? (sendCmd(savePresetCmd(1)), setSavingPreset(true), setTimeout(() => setSavingPreset(false), 600))
-              : sendCmd(recallPresetCmd(1));
+          }
+          case "recallPreset2": {
+            const idx = m.presetBindings[1];
+            isSaveHeld ? (sendCmd(savePresetCmd(idx)), setSavingPreset(true), setTimeout(() => setSavingPreset(false), 600)) : sendCmd(recallPresetCmd(idx));
             break;
-          case "recallPreset3":
-            isSaveHeld
-              ? (sendCmd(savePresetCmd(2)), setSavingPreset(true), setTimeout(() => setSavingPreset(false), 600))
-              : sendCmd(recallPresetCmd(2));
+          }
+          case "recallPreset3": {
+            const idx = m.presetBindings[2];
+            isSaveHeld ? (sendCmd(savePresetCmd(idx)), setSavingPreset(true), setTimeout(() => setSavingPreset(false), 600)) : sendCmd(recallPresetCmd(idx));
             break;
-          case "recallPreset4":
-            isSaveHeld
-              ? (sendCmd(savePresetCmd(3)), setSavingPreset(true), setTimeout(() => setSavingPreset(false), 600))
-              : sendCmd(recallPresetCmd(3));
+          }
+          case "recallPreset4": {
+            const idx = m.presetBindings[3];
+            isSaveHeld ? (sendCmd(savePresetCmd(idx)), setSavingPreset(true), setTimeout(() => setSavingPreset(false), 600)) : sendCmd(recallPresetCmd(idx));
             break;
+          }
           case "macro1": fireMacro(0); break;
           case "macro2": fireMacro(1); break;
           case "macro3": fireMacro(2); break;
@@ -614,7 +616,7 @@ export default function Home() {
             className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${activeCamTracking.enabled ? "bg-green-600 text-white" : "bg-zinc-800 hover:bg-zinc-700 text-white"}`}
             title="Click-to-track mode"
           >
-            Track
+            Track <span className="opacity-60 text-xs">(β)</span>
           </button>
           {activeCamTracking.enabled && (
             <>
@@ -651,6 +653,12 @@ export default function Home() {
             className={`px-4 py-1.5 rounded-lg text-sm transition-colors ${showControlsOverlay ? "bg-blue-600 text-white" : "bg-zinc-800 hover:bg-zinc-700 text-white"}`}
           >
             Controls
+          </button>
+          <button
+            onClick={() => setShowPresets(true)}
+            className="bg-zinc-800 hover:bg-zinc-700 px-4 py-1.5 rounded-lg text-sm transition-colors"
+          >
+            Presets
           </button>
           <button
             onClick={() => setShowProfiles(true)}
@@ -879,6 +887,15 @@ export default function Home() {
       )}
       {showRemap && (
         <RemapModal mapping={mapping} onChange={handleMappingChange} onClose={() => setShowRemap(false)} />
+      )}
+      {showPresets && activeCam && (
+        <PresetManager
+          camera={activeCam}
+          mapping={mapping}
+          onMappingChange={handleMappingChange}
+          onSendCmd={(cmd) => sendCmd(cmd)}
+          onClose={() => setShowPresets(false)}
+        />
       )}
       {showProfiles && (
         <ProfilesModal

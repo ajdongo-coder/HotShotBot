@@ -18,6 +18,12 @@ PS5 DualSense PTZ camera controller with AI person tracking. Built for Panasonic
 - **Mid Shot** preset — keeps head-to-waist in frame, auto-zooms
 - Adjustable dead zone and tracking speed
 
+**Virtual Camera**
+- Built-in 3D camera — drive a rendered scene when no physical camera is present
+- Exercises the full stack: gamepad control, presets, and AI tracking all work with no hardware
+- A walking figure in the scene gives person tracking something to lock onto
+- Great for demos, development, and testing
+
 **Live Feed**
 - MJPEG stream display per camera
 - Overlay with iris, zoom, focus, AF/MF state
@@ -35,7 +41,7 @@ PS5 DualSense PTZ camera controller with AI person tracking. Built for Panasonic
 - Apple Silicon Mac (M1/M2/M3)
 - macOS 13+
 - PS5 DualSense controller (USB or Bluetooth)
-- Panasonic PTZ camera on the same local network (AW-UE70, AW-UE160, AW-HE130)
+- Panasonic PTZ camera on the same local network (AW-UE70, AW-UE160, AW-HE130) — optional; the built-in virtual camera works with no hardware
 
 ## Installation
 
@@ -69,6 +75,8 @@ Outputs a signed-ready `.dmg` and `.zip` to `release/` for Apple Silicon.
 3. Or add manually: enter IP, port (default 80), and select the model
 4. Each camera gets a color — the DualSense light bar changes to match the active camera (USB only)
 
+No camera on hand? Add one and pick the **Virtual (3D)** model — no IP needed. It renders a 3D scene you can control and track just like a real camera.
+
 ## Controller Setup
 
 Connect the DualSense via USB or Bluetooth. Press any button once to activate the Gamepad API — the status dot turns green.
@@ -95,5 +103,6 @@ All buttons and axes are remappable via **Remap → Advanced**.
 - **Next.js 16** — UI and API routes (PTZ proxy, camera status, network discovery)
 - **Electron 42** — native Mac app wrapper, HID light bar control
 - **TensorFlow.js + COCO-SSD** — on-device person detection via WebGPU (Metal)
+- **Three.js** — renders the virtual camera's 3D scene
 - **Web Workers** — one inference worker per camera for parallel tracking
 - **Gamepad API** — DualSense input at 60fps
